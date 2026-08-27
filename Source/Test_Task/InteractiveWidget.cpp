@@ -7,35 +7,46 @@
 
 void UInteractiveWidget::NativeConstruct()
 {
+	Super::NativeConstruct();
+
 	if (ActionButton)
 	{
-		ActionButton->OnClicked.AddDynamic(this, &UInteractiveWidget::ActionButtonOnClicked);
+		ActionButton->OnClicked.AddUniqueDynamic(this, &UInteractiveWidget::ActionButtonOnClicked);
 	}
+}
+
+void UInteractiveWidget::NativeDestruct()
+{
+	if (ActionButton)
+	{
+		ActionButton->OnClicked.RemoveDynamic(this, &UInteractiveWidget::ActionButtonOnClicked);
+	}
+
+	Super::NativeDestruct();
 }
 
 void UInteractiveWidget::ActionButtonOnClicked()
 {
-	MessageLabel->SetText(FText::FromString("You are damaged!"));
+	if (MessageLabel)
+	{
+		MessageLabel->SetText(FText::FromString("You are damaged!"));
+	}
 
 	ATest_TaskCharacter* MyChar = Cast<ATest_TaskCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
 	if (MyChar)
 	{
-		MyChar->fPlayerHealth -= 10.0f; // Decrease health by 10
-	}
-
-	HealthBar->SetPercent((MyChar->fPlayerHealth) / 100);
-
-	if (HealthBar->GetPercent() <= 0.0f)
-	{
-		Dead();
+		MyChar->ApplyHealthChange(-10.0f);
+		UpdateHealthBar(MyChar->GetCurrentHealth(), MyChar->GetMaximumHealth());
 	}
 }
 
-void UInteractiveWidget::UpdateHealthBar(float CurrentHealth)
+void UInteractiveWidget::UpdateHealthBar(float CurrentHealth, float MaxHealth)
 {
 	if (HealthBar)
 	{
-		float ClampedHealth = FMath::Clamp(CurrentHealth / 100.0f, 0.0f, 1.0f);
+		const float ClampedHealth = MaxHealth > 0.0f
+			? FMath::Clamp(CurrentHealth / MaxHealth, 0.0f, 1.0f)
+			: 0.0f;
 		HealthBar->SetPercent(ClampedHealth);
 
 		if (ClampedHealth <= 0.0f && MessageLabel)
@@ -52,5 +63,8 @@ void UInteractiveWidget::UpdateHealthBar(float CurrentHealth)
 
 void UInteractiveWidget::Dead()
 {
-	MessageLabel->SetText(FText::FromString("You are dead!"));
+	if (MessageLabel)
+	{
+		MessageLabel->SetText(FText::FromString("You are dead!"));
+	}
 }

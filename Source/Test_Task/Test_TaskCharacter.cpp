@@ -41,19 +41,6 @@ ATest_TaskCharacter::ATest_TaskCharacter()
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
-
-	fPlayerHealth = 100.0f;
-
-}
-
-void ATest_TaskCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	/*if (TextWidget)
-	{
-		TextWidget->UpdateHealthBar(fPlayerHealth);
-	}*/
 }
 
 UAbilitySystemComponent* ATest_TaskCharacter::GetAbilitySystemComponent() const
@@ -81,10 +68,6 @@ void ATest_TaskCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 
 	InitAbilitySystemComponent();
-
-	InitDefaultAttributes();
-
-	//InitHUD();
 }
 
 //////////////////////////////////////////////////////////////////////////// Input
@@ -102,17 +85,11 @@ void ATest_TaskCharacter::NotifyControllerChanged()
 		}
 	}
 
-	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ATest_TaskCharacter::OnBeginOverLap);
-
-	/*if (PlayerHealthWidgetClass != nullptr)
-	{
-		PlayerHealthWidget = CreateWidget(GetWorld(), PlayerHealthWidgetClass);
-		PlayerHealthWidget->AddToViewport();
-	}*/
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddUniqueDynamic(this, &ATest_TaskCharacter::OnBeginOverlap);
 
 	if (IsValid(WidgetClass))
 	{
-		TextWidget = Cast<UInteractiveWidget>(CreateWidget(GetWorld(), WidgetClass));
+		TextWidget = CreateWidget<UInteractiveWidget>(GetWorld(), WidgetClass);
 
 		if (TextWidget != nullptr)
 		{
@@ -159,18 +136,12 @@ void ATest_TaskCharacter::InitHUD() const
 }
 
 
-void ATest_TaskCharacter::OnBeginOverLap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ATest_TaskCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor->ActorHasTag("Damage"))
+	if (HasAuthority() && IsValid(OtherActor) && OtherActor->ActorHasTag("Damage"))
 	{
-		fPlayerHealth -= 10.0f;
-
-		if (TextWidget)
-		{
-			TextWidget->UpdateHealthBar(fPlayerHealth);
-		}
-
-		UE_LOG(LogTemp, Warning, TEXT("Overlapped! Health: %f"), fPlayerHealth);
+		ApplyHealthChange(-10.0f);
+		UE_LOG(LogTemp, Warning, TEXT("Overlapped! Health: %f"), GetCurrentHealth());
 	}
 }
 
@@ -184,12 +155,11 @@ void ATest_TaskCharacter::GiveDefaultAbilities()
 
 	for (TSubclassOf<UGameplayAbility> AbilityClass : DefaultAbilities)
 	{
-		const FGameplayAbilitySpec AbilitySpec(AbilityClass, 1);
-		AbilitySystemComponent->GiveAbility(AbilitySpec);
-		/*if (AbilityClass)
+		if (AbilityClass)
 		{
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this));
-		}*/
+			const FGameplayAbilitySpec AbilitySpec(AbilityClass, 1);
+			AbilitySystemComponent->GiveAbility(AbilitySpec);
+		}
 	}
 }
 
@@ -233,7 +203,7 @@ void ATest_TaskCharacter::Look(const FInputActionValue& Value)
 
 void ATest_TaskCharacter::InitDefaultAttributes() const
 {
-	if (!AbilitySystemComponent || !DefaultAttributeEffect)
+	if (!HasAuthority() || !AbilitySystemComponent || !DefaultAttributeEffect)
 	{
 		return;
 	}
@@ -251,20 +221,42 @@ void ATest_TaskCharacter::InitDefaultAttributes() const
 
 void ATest_TaskCharacter::ApplyHealthTick()
 {
-	if (AttributeSet && AbilitySystemComponent)
+	ApplyHealthChange(-1.0f);
+
+	if (TextWidget && GetCurrentHealth() <= 0.0f)
 	{
-		const float NewHealth = FMath::Clamp(AttributeSet->GetHealth() - 1.0f, 0.0f, AttributeSet->GetMaxHealth());
-		AbilitySystemComponent->SetNumericAttributeBase(AttributeSet->GetHealthAttribute(), NewHealth);
-		if (NewHealth == 0.0f)
-		{
-			TextWidget->Dead();
-		}
+		TextWidget->Dead();
 	}
+}
+
+void ATest_TaskCharacter::ApplyHealthChange(float Delta)
+{
+	if (!HasAuthority() || !AbilitySystemComponent || !AttributeSet)
+	{
+		return;
+	}
+
+	const float NewHealth = FMath::Clamp(GetCurrentHealth() + Delta, 0.0f, GetMaximumHealth());
+	AbilitySystemComponent->SetNumericAttributeBase(AttributeSet->GetHealthAttribute(), NewHealth);
+
+	if (TextWidget)
+	{
+		TextWidget->UpdateHealthBar(NewHealth, GetMaximumHealth());
+	}
+}
+
+float ATest_TaskCharacter::GetCurrentHealth() const
+{
+	return AttributeSet ? AttributeSet->GetHealth() : 0.0f;
+}
+
+float ATest_TaskCharacter::GetMaximumHealth() const
+{
+	return AttributeSet ? AttributeSet->GetMaxHealth() : 0.0f;
 }
 
 void ATest_TaskCharacter::StartShowingHUDAndDamaging()
 {
-	//Super::StartShowingHUDAndDamaging();
 	InitHUD();
 
 	// Start applying health damage every second
@@ -272,7 +264,7 @@ void ATest_TaskCharacter::StartShowingHUDAndDamaging()
 
 	if (TextWidget)
 	{
-		TextWidget->UpdateHealthBar(fPlayerHealth);
+		TextWidget->UpdateHealthBar(GetCurrentHealth(), GetMaximumHealth());
 	}
 }
 
@@ -287,5 +279,4 @@ void ATest_TaskCharacter::StopShowingHUDAndDamaging()
 	}
 
 	GetWorld()->GetTimerManager().ClearTimer(HealthReductionTimer);
-	//Stop the ability and Hide the HUD
 }

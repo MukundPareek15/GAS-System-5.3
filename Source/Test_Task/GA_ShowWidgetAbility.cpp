@@ -3,9 +3,13 @@
 
 #include "GA_ShowWidgetAbility.h"
 #include "AttributesWidget.h"
-#include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
 
+UGA_ShowWidgetAbility::UGA_ShowWidgetAbility()
+{
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalOnly;
+}
 
 void UGA_ShowWidgetAbility::ActivateAbility(
 	const FGameplayAbilitySpecHandle Handle,
@@ -13,16 +17,30 @@ void UGA_ShowWidgetAbility::ActivateAbility(
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	// TODO: logic to show widget + apply GE
-	if (IsValid(WidgetClass))
-	{
-		AbilityWidget = Cast<UAttributesWidget>(CreateWidget(GetWorld(), WidgetClass));
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-		if (AbilityWidget != nullptr)
-		{
-			AbilityWidget->AddToViewport();
-		}
+	if (!ActorInfo || !ActorInfo->IsLocallyControlled() || !CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
+		return;
 	}
+
+	APlayerController* PlayerController = ActorInfo->PlayerController.Get();
+	if (!PlayerController || !WidgetClass)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
+		return;
+	}
+
+	AbilityWidget = CreateWidget<UAttributesWidget>(PlayerController, WidgetClass);
+	if (!AbilityWidget)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
+		return;
+	}
+
+	AbilityWidget->BindToAttributes();
+	AbilityWidget->AddToViewport();
 }
 
 void UGA_ShowWidgetAbility::EndAbility(
@@ -32,10 +50,11 @@ void UGA_ShowWidgetAbility::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
-	// TODO: remove widget + remove GE
 	if (AbilityWidget)
 	{
 		AbilityWidget->RemoveFromParent();
 		AbilityWidget = nullptr;
 	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

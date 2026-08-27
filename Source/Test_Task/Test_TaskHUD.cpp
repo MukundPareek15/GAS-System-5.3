@@ -7,24 +7,24 @@
 
 void ATest_TaskHUD::Init()
 {
-	//if (!AttributeWidget && AttributeWidgetClass)
-	//{
+	if (AttributeWidget && AttributeWidget->IsInViewport())
+	{
+		return;
+	}
+
+	if (!AttributeWidgetClass)
+	{
+		return;
+	}
+
 	AttributeWidget = CreateWidget<UAttributesWidget>(GetOwningPlayerController(), AttributeWidgetClass);
-	//if (AttributeWidget)
-	//{
+	if (!AttributeWidget)
+	{
+		return;
+	}
+
 	AttributeWidget->BindToAttributes();
 	AttributeWidget->AddToViewport();
-	//}
-//}
-/*if (AttributeWidgetClass)
-{
-	AttributesWidget = CreateWidget<UAttributesWidget>(GetWorld(), AttributeWidgetClass);
-	if (AttributesWidget)
-	{
-		AttributesWidget->AddToViewport();
-		AttributesWidget->BindToAttributes();
-	}
-}*/
 }
 
 void ATest_TaskHUD::RemoveAttributeWidget()

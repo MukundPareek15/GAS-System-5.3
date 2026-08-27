@@ -2,6 +2,8 @@
 
 A first-person Unreal Engine 5.3 gameplay sandbox for learning and testing the Gameplay Ability System (GAS). The project focuses on a network-aware ability setup, replicated attributes, gameplay effects, and UI that responds to attribute changes.
 
+I built this project to understand the complete GAS lifecycle in C++, from server-owned initialization and ability grants to replicated attributes and reactive UMG presentation.
+
 > This branch is built for Unreal Engine 5.3. It adapts the earlier 5.5-oriented work so the project opens and builds with UE 5.3.
 
 ## What is included
@@ -16,6 +18,14 @@ A first-person Unreal Engine 5.3 gameplay sandbox for learning and testing the G
 - UMG widgets that bind to the health attribute and update their health display when it changes.
 - Enhanced Input actions for first-person movement, look, jump, shooting, and ability input.
 
+## Engineering safeguards
+
+- GAS attributes are the single source of truth for health. The character and widgets no longer maintain a second, conflicting health variable.
+- Default abilities and attributes are initialized only by the authority, while clients receive replicated state through the PlayerState-owned Ability System Component.
+- Attribute widgets use removable UObject delegates for both `Health` and `MaxHealth`, avoiding stale lambda captures after a widget is destroyed.
+- Widget creation, bound controls, health division, overlap actors, and death presentation are protected with validity checks.
+- The UI ability is instanced per actor, runs locally, commits before presentation, and performs full cleanup through `EndAbility`.
+
 ## Architecture
 
 | Area | Implementation |
@@ -24,7 +34,7 @@ A first-person Unreal Engine 5.3 gameplay sandbox for learning and testing the G
 | Avatar | `ATest_TaskCharacter` implements `IAbilitySystemInterface`, initializes actor info on possession and replication, grants abilities on the authority, and applies default attributes. |
 | Attributes | `UTaskAttributeSet` replicates health values and keeps health within `0` and `MaxHealth`. |
 | Gameplay effects | `GE_DefaultValues` initializes attributes and `GE_ReduceHealth` provides a health-reduction example. |
-| UI | `UAttributesWidget`, `UInteractiveWidget`, and `ATest_TaskHUD` display and react to player health. |
+| UI | `UAttributesWidget`, `UInteractiveWidget`, and `ATest_TaskHUD` display the replicated GAS health state and safely unregister delegates during teardown. |
 | Input | The first-person template uses Enhanced Input, including the `IA_Ability` action. |
 
 ## Requirements

@@ -14,7 +14,7 @@ class TEST_TASK_API UInteractiveWidget : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable)
-	void UpdateHealthBar(float CurrentHealth);
+	void UpdateHealthBar(float CurrentHealth, float MaxHealth);
 
 	UFUNCTION(BlueprintCallable)
 	void Dead();
@@ -30,6 +30,7 @@ protected:
 	class UButton* ActionButton;
 
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION()
 	void ActionButtonOnClicked();

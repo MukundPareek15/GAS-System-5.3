@@ -6,7 +6,9 @@
 #include "Blueprint/UserWidget.h"
 #include "AttributesWidget.generated.h"
 
-class UProgressBar;
+class UAbilitySystemComponent;
+class UTaskAttributeSet;
+struct FOnAttributeChangeData;
 /**
  *
  */
@@ -16,11 +18,27 @@ class TEST_TASK_API UAttributesWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable)
 	void BindToAttributes();
 
 protected:
-	UPROPERTY(BlueprintReadOnly)
-	float HealthPercent;
+	virtual void NativeDestruct() override;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	float HealthPercent = 0.0f;
+
+private:
+	void HandleAttributeChanged(const FOnAttributeChangeData& Data);
+	void RefreshHealthPercent();
+	void UnbindFromAttributes();
+
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> BoundAbilitySystemComponent;
+
+	UPROPERTY()
+	TObjectPtr<UTaskAttributeSet> BoundAttributeSet;
+
+	FDelegateHandle HealthChangedDelegateHandle;
+	FDelegateHandle MaxHealthChangedDelegateHandle;
 
 };

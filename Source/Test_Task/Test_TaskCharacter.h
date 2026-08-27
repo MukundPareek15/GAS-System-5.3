@@ -3,22 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "AbilitySystemInterface.h"
-#include <AbilitySystemComponent.h>
-#include "TaskAttributeSet.h"
 #include "Test_TaskCharacter.generated.h"
 
 class UInputComponent;
+class UPrimitiveComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
+class UGameplayAbility;
 class UTaskAbilitySystemComponent;
 class UTaskAttributeSet;
 class UGameplayEffect;
+class UInteractiveWidget;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -66,18 +66,14 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 
-	// Player Health Variable
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float fPlayerHealth;
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Ability|Attributes")
+	void ApplyHealthChange(float Delta);
 
-	//Code for UI set in both c++ and BP
-	/*UPROPERTY(EditAnywhere, Category = "UI")
-	TSubclassOf<UUserWidget> PlayerHealthWidgetClass;
-	UUserWidget* PlayerHealthWidget;*/
+	UFUNCTION(BlueprintPure, Category = "Ability|Attributes")
+	float GetCurrentHealth() const;
 
-	UFUNCTION()
-	void OnBeginOverLap(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor,
-		class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION(BlueprintPure, Category = "Ability|Attributes")
+	float GetMaximumHealth() const;
 
 protected:
 
@@ -85,13 +81,11 @@ protected:
 	void InitAbilitySystemComponent();
 	void InitDefaultAttributes() const;
 
-	virtual void Tick(float DeltaSeconds) override;
-
 	UPROPERTY(EditAnywhere, Category = "HUD Class")
-	TSubclassOf<UUserWidget> WidgetClass;
+	TSubclassOf<UInteractiveWidget> WidgetClass;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "Runtime")
-	class UInteractiveWidget* TextWidget;
+	TObjectPtr<UInteractiveWidget> TextWidget;
 
 	UPROPERTY()
 	TObjectPtr<UTaskAbilitySystemComponent> AbilitySystemComponent;
@@ -115,6 +109,10 @@ protected:
 
 	UFUNCTION()
 	void ApplyHealthTick();
+
+	UFUNCTION()
+	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);

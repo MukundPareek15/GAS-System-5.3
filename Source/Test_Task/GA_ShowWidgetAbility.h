@@ -4,9 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
-#include "AbilitySystemComponent.h"
-#include "AttributeSet.h"
-#include "AttributesWidget.h"
 #include "Test_Task.h"
 #include "GA_ShowWidgetAbility.generated.h"
 
@@ -20,6 +17,8 @@ class TEST_TASK_API UGA_ShowWidgetAbility : public UGameplayAbility
 	GENERATED_BODY()
 
 public:
+	UGA_ShowWidgetAbility();
+
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo,
@@ -30,21 +29,16 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		bool bReplicateEndAbility, bool bWasCancelled) override;
 
-	EAbilityInputID GetAbilityInputID() { return AbilityInputID; }
+	EAbilityInputID GetAbilityInputID() const { return AbilityInputID; }
 
 protected:
-	// Widget class to spawn
 	UPROPERTY(EditAnywhere, Category = "UI")
 	EAbilityInputID AbilityInputID{ EAbilityInputID::None };
 
-	// Instance of the widget
-	UPROPERTY()
-	UAttributesWidget* AttributesWidget;
-
 	UPROPERTY(EditAnywhere, Category = "HUD Class")
-	TSubclassOf<UUserWidget> WidgetClass;
+	TSubclassOf<UAttributesWidget> WidgetClass;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "Runtime")
-	class UAttributesWidget* AbilityWidget;
+	TObjectPtr<UAttributesWidget> AbilityWidget;
 
 };
